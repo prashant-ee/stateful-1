@@ -1,0 +1,1 @@
+A stateful bank account implemented with the help of AtomicReference.

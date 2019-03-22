@@ -1,0 +1,1 @@
+The stateful account now can be implemented as a single threaded queue with futures.

@@ -12,10 +12,14 @@ class AccountActor {
   var _balance = 0
   var _actions : List[Action] = Nil
 
-  // start execution of the queue messages
-  while(true) {
-    val runnableOpt: Option[Runnable] = queueRef.getAndUpdate(queue => queue.init).lastOption
-    runnableOpt.map(runnable => AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS))
+  import AccountActor._
+  Future {
+    // start execution of the queue messages
+    while(true) {
+      val runnableOpt: Option[Runnable] = queueRef.getAndUpdate(queue => if(queue.nonEmpty) queue.init else queue)
+        .lastOption
+      runnableOpt.map(runnable => AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS))
+    }
   }
 
   def deposit(amount: Int): Future[Unit] = {
@@ -49,5 +53,5 @@ object AccountActor {
 
   private val service: ExecutorService = Executors.newFixedThreadPool(100)
 
-//  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(service)
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(service)
 }

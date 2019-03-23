@@ -1,57 +1,65 @@
 package stateful.h_possibleactorimplementation
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.{ExecutorService, Executors, TimeUnit}
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
 class AccountActor {
 
-  val queueRef: AtomicReference[List[Runnable]] = new AtomicReference[List[Runnable]](Nil)
+  trait Actionable {
+    def doAction(): Unit
+  }
+
+  val queueRef: AtomicReference[List[Actionable]] = new AtomicReference[List[Actionable]](Nil)
 
   var _balance = 0
   var _actions : List[Action] = Nil
 
   import AccountActor._
-  Future {
+
+  def queueExecution: Runnable = () => {
     // start execution of the queue messages
-    while(true) {
-      val runnableOpt: Option[Runnable] = queueRef.getAndUpdate(queue => if(queue.nonEmpty) queue.init else queue)
-        .lastOption
-      runnableOpt.map(runnable => AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS))
-    }
+    val maybeActionable: Option[Actionable] = queueRef.getAndUpdate(queue => if(queue.nonEmpty) queue.init else queue).lastOption
+    maybeActionable.foreach(actionable => actionable.doAction())
   }
+
+  service.scheduleWithFixedDelay(queueExecution, 1, 1, TimeUnit.MICROSECONDS)
 
   def deposit(amount: Int): Future[Unit] = {
     val p: Promise[Unit] = Promise()
 
-    val runnable: Runnable = () => {
+    val actionable: Actionable = () => {
       _balance += amount
       Deposit(amount) :: _actions
       p.complete(Success(()))
     }
-    queueRef.updateAndGet(queue => runnable :: queue)
+    queueRef.updateAndGet(queue => actionable :: queue)
     p.future
   }
 
   def withdraw(amount: Int) : Future[Unit] = {
     val p: Promise[Unit] = Promise()
 
-    val runnable: Runnable = () => {
+    val actionable: Actionable = () => {
       _balance -= amount
       Withdrawal(amount) :: _actions
       p.complete(Success(()))
     }
-    queueRef.updateAndGet(queue => runnable :: queue)
+    queueRef.updateAndGet(queue => actionable :: queue)
     p.future
   }
 
-  def balance: Future[Int] = Future.successful(_balance)
+  def balance: Future[Int] = {
+    val p: Promise[Int] = Promise()
+    val actionable: Actionable = () => {
+      p.complete(Success(_balance))
+    }
+    queueRef.updateAndGet(queue => actionable :: queue)
+    p.future
+  }
 }
 
 object AccountActor {
-
-  private val service: ExecutorService = Executors.newFixedThreadPool(100)
-
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(service)
+  private val service: ScheduledExecutorService = Executors.newScheduledThreadPool(Runtime.getRuntime.availableProcessors())
 }

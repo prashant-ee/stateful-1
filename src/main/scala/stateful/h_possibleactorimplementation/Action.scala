@@ -1,4 +1,4 @@
-package stateful
+package stateful.h_possibleactorimplementation
 
 trait Action {
 

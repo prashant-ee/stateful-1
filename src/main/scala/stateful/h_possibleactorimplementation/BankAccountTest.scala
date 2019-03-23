@@ -7,7 +7,7 @@ import scala.tools.nsc.io.File
 
 object BankAccountTest extends App {
 
-  val bankAccounts: List[AccountActor] = List.fill(100000)(new AccountActor())
+  val bankAccounts: List[AccountActor] = List.fill(1000000)(new AccountActor())
 
   val service = Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors())
 
@@ -27,7 +27,7 @@ object BankAccountTest extends App {
 
     finalFuture.onComplete { b =>
       println(f"$index%06d) Result : $b")
-      File("output").createFile().appendAll(f"$index%06d) Result : $b")
+      File("output").createFile().appendAll(f"$index%06d) Result : $b\n")
     }
   }
 

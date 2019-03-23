@@ -1,6 +1,9 @@
 package stateful.h_possibleactorimplementation
-import java.util.concurrent.{ExecutorService, Executors, Future, TimeUnit}
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.{ExecutorService, Executors, TimeUnit}
+
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.Success
 
 class AccountActor {
 
@@ -15,25 +18,36 @@ class AccountActor {
     AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS)
   }
 
-  def deposit(amount: Int): Unit = {
+  def deposit(amount: Int): Future[Unit] = {
+    val p: Promise[Unit] = Promise()
+
     val runnable: Runnable = () => {
       _balance += amount
       Deposit(amount) :: _actions
+      p.complete(Success(()))
     }
     queueRef.updateAndGet(queue => runnable :: queue)
+    p.future
   }
 
-  def withdraw(amount: Int) : Unit = {
+  def withdraw(amount: Int) : Future[Unit] = {
+    val p: Promise[Unit] = Promise()
+
     val runnable: Runnable = () => {
       _balance -= amount
       Withdrawal(amount) :: _actions
+      p.complete(Success(()))
     }
     queueRef.updateAndGet(queue => runnable :: queue)
+    p.future
   }
 
-  def balance = ???
+  def balance: Future[Int] = Future.successful(_balance)
 }
 
 object AccountActor {
+
   private val service: ExecutorService = Executors.newFixedThreadPool(100)
+
+//  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(service)
 }

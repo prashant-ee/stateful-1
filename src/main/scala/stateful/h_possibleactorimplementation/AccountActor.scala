@@ -14,8 +14,8 @@ class AccountActor {
 
   // start execution of the queue messages
   while(true) {
-    val runnable: Runnable = queueRef.getAndUpdate(queue => queue.init).last
-    AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS)
+    val runnableOpt: Option[Runnable] = queueRef.getAndUpdate(queue => queue.init).lastOption
+    runnableOpt.map(runnable => AccountActor.service.submit(runnable).get(10, TimeUnit.SECONDS))
   }
 
   def deposit(amount: Int): Future[Unit] = {

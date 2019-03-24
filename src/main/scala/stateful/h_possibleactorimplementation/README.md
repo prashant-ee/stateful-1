@@ -1,1 +1,1 @@
-The implementation tries schedule the AccountActor over a thread pool and still tries to garantee execution of the account methods in a single thread. 
+This implementation try to schedule the AccountActor over a thread pool and while maintaining the execution of the internal state manupulation operations on a single thread at a time. This allows to support many instances of the Actor object over limited number of actual threads. 
